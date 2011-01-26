@@ -1,0 +1,5 @@
+ChangeLog
+MANIFEST
+Makefile.PL
+lib/Any/Daemon.pm
+t/01use.t
