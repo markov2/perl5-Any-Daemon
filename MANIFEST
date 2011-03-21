@@ -2,4 +2,5 @@ ChangeLog
 MANIFEST
 Makefile.PL
 lib/Any/Daemon.pm
+scripts/generic-startstop
 t/01use.t

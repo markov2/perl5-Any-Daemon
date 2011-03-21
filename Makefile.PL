@@ -3,7 +3,7 @@ use ExtUtils::MakeMaker;
 
 use 5.008;
 
-my $version = '0.10';
+my $version = '0.11';
 
 WriteMakefile
  ( NAME	 	=> 'Any::Daemon'
@@ -30,5 +30,5 @@ LICENSE         = artistic
 FIRST_YEAR      = 2011
 EMAIL           = perl@overmeer.net
 WEBSITE         = http://perl.overmeer.net/
-PODTAIL		= ../daemon-shared-podtail
+PODTAIL		= ../Mux-shared-podtail
 __POSTAMBLE

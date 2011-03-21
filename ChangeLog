@@ -1,6 +1,14 @@
 
 version history of Any::Daemon
 
+version 0.11: Mon Mar 21 16:46:45 CET 2011
+	- use $EUID and $EGID to change user/group, not setuid/setgid
+	- change EUID only after changing EGID
+	- create workdir after changing ids
+	- create pidfile before changing ids
+	- added generic start-stop script to distribution
+	- fix when uid==0 and gid==0
+
 version 0.10: Wed Jan 26 16:22:26 CET 2011
 	- initial released version, based on various own implementations
 	  in active duty.
