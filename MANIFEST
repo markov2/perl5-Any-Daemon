@@ -1,6 +1,7 @@
 ChangeLog
 MANIFEST
 Makefile.PL
+examples/net.pl
 lib/Any/Daemon.pm
 scripts/generic-startstop
 t/01use.t

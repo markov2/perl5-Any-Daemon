@@ -41,8 +41,7 @@ you can easily redirect error reports to any logging mechanism you like.
 
 The code for this module is in use for many different daemons, some
 with heavy load (a few dozen requests per second)  Have a look in
-the examples directory of the M<IOMux> distribution for an extended
-example.
+the examples directory!
 
 =chapter METHODS
 
@@ -198,11 +197,19 @@ sub run(@)
     my $sid = setsid;
 
     my $reconfig    = $args{reconfig}    || \&_reconfig_daemon;
-    my $run_child   = $args{child_task}  || \&_child_task;
     my $kill_childs = $args{kill_childs} || \&_kill_childs;
     my $child_died  = $args{child_died}  || \&_child_died;
-
     my $max_childs  = $args{max_childs}  || 10;
+    my $child_task  = $args{child_task}  || \&_child_task; 
+
+    my $run_child   = sub
+       { eval { $child_task->(@_) };
+         if($@ && ! ref $@)
+         {   my $err = $@;
+             $err =~ s/\s+\z//s;
+             panic $err;
+         }
+       };
 
     $SIG{CHLD} = sub { $child_died->($max_childs, $run_child) };
     $SIG{HUP}  = sub
