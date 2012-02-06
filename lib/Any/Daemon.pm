@@ -3,10 +3,12 @@ use strict;
 
 package Any::Daemon;
 
-use Log::Report 'any-daemon';
-use POSIX       qw(setsid :sys_wait_h);
-use English     qw/$EUID $EGID $PID/;
-use File::Spec  ();
+use Log::Report   'any-daemon';
+
+use POSIX         qw(setsid :sys_wait_h);
+use English       qw/$EUID $EGID $PID/;
+use File::Spec    ();
+use Unix::SetUser qw/set_user/;
 
 use constant
   { SLEEP_FOR_SOME_TIME   =>  10
@@ -34,10 +36,11 @@ Any::Daemon - basic needs for a daemon
   $daemon->run(@run_opts);
 
 =chapter DESCRIPTION
-This module delivers the basic needs for any daemon. There are many
-standard daemon implementations, with as main common difference that
-this module is not dedicated to a specific task. By using M<Log::Report>,
-you can easily redirect error reports to any logging mechanism you like.
+This module delivers the basic needs for any daemon on UNIX systems.
+There are other standard daemon implementations available on CPAN,
+with as main common difference that this module is not dedicated to a
+specific task. By using M<Log::Report>, you can easily redirect error
+reports to any logging mechanism you like.
 
 The code for this module is in use for many different daemons, some
 with heavy load (a few dozen requests per second)  Have a look in
@@ -171,16 +174,12 @@ sub run(@)
         }
     }
 
-    my $gid = $self->{AD_gid};
-    if(defined $gid && $gid!=$EGID)
-    {   $EGID = $gid
-            or fault __x"cannot switch to group-id {gid}", gid => $gid;
-    }
-
-    my $uid = $self->{AD_uid};
-    if(defined $uid)
-    {   $uid==$EUID or $EUID = $uid
-            or fault __x"cannot switch to user-id {uid}", uid => $uid;
+    my $gid = $self->{AD_gid} || $EGID;
+    my $uid = $self->{AD_uid} || $EUID;
+    if($gid!=$EGID && $uid!=$EUID)
+    {   eval { set_user $uid, undef, $gid };
+        $@ and error __x"cannot switch to user/group to {uid}/{gid}: {err}"
+          , uid => $uid, gid => $gid, err => $@;
     }
     elsif($EUID==0)
     {   warning __"running daemon as root is dangerous: please specify user";
@@ -194,7 +193,7 @@ sub run(@)
             or fault __x"cannot change to working directory {dir}", dir => $wd;
     }
 
-    my $sid = setsid;
+    my $sid         = setsid;
 
     my $reconfig    = $args{reconfig}    || \&_reconfig_daemon;
     my $kill_childs = $args{kill_childs} || \&_kill_childs;
@@ -268,7 +267,7 @@ sub _kill_childs(@)
 
 # standard implementation for starting new childs.
 sub _child_died($$)
-{   my ($maxchilds, $run_child) = @_;
+{   my ($max_childs, $run_child) = @_;
 
     # Clean-up zombies
 
@@ -292,6 +291,7 @@ sub _child_died($$)
     my $silence_warn = 0;
 
   BIRTH:
+    while(keys %childs < $max_childs)
     {   my $kid = fork;
         unless(defined $kid)
         {   alert "cannot fork new children" unless $silence_warn++;

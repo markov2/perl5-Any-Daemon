@@ -40,6 +40,7 @@ my %net_opts =
 
 GetOptions
    'background|bg!' => \$run_opts{background}
+ , 'childs|c=i'     => \$run_opts{max_childs}
  , 'group|g=s'      => \$os_opts{group}
  , 'host|h=s'       => \$net_opts{host}
  , 'pid-file|p=s'   => \$os_opts{pid_file}

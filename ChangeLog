@@ -1,6 +1,12 @@
 
 version history of Any::Daemon
 
+version 0.13: Mon Feb  6 11:15:55 CET 2012
+	- use Unix::SaveIDs to set the user, because you want the
+	  saved-uid to be changed as well. [Andrew Beverley]
+	- fix: start of more than one child was broken: loop line
+	  misteriously lost from the source. Fixed by [Andrew Beverley]
+
 version 0.12: Mon Apr 18 13:55:23 CEST 2011
 	- panic when the child dies with run-time program errors.
 	- added example
