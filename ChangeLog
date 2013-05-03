@@ -1,6 +1,9 @@
 
 version history of Any::Daemon
 
+version 0.14: Fri May  3 10:21:16 CEST 2013
+	- drop Unix::SavedIDs because it got broken in 5.16
+
 version 0.13: Mon Feb  6 11:15:55 CET 2012
 	- use Unix::SaveIDs to set the user, because you want the
 	  saved-uid to be changed as well. [Andrew Beverley]

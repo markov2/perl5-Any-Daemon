@@ -3,12 +3,11 @@ use strict;
 
 package Any::Daemon;
 
-use Log::Report   'any-daemon';
+use Log::Report  'any-daemon';
 
-use POSIX         qw(setsid :sys_wait_h);
+use POSIX         qw(setsid setuid :sys_wait_h);
 use English       qw/$EUID $EGID $PID/;
 use File::Spec    ();
-use Unix::SetUser qw/set_user/;
 
 use constant
   { SLEEP_FOR_SOME_TIME   =>  10
@@ -54,6 +53,9 @@ the examples directory!
 With C<new()> you provide the operating system integration OPTIONS,
 where C<run()> gets the activity related parameters: the real action.
 
+Be warned that the user, group, and workdir will not immediately be
+effected: delayed until M<run()>.
+
 =option  pid_file FILENAME
 =default pid_file C<undef>
 
@@ -88,7 +90,7 @@ sub init($)
 
     my $user = $args->{user};
     if(defined $user)
-    {   if($user =~ m/\D/)
+    {   if($user =~ m/[^0-9]/)
         {   my $uid = $self->{AD_uid} = getpwnam $user;
             defined $uid
                 or error __x"user {name} does not exist", name => $user;
@@ -98,7 +100,7 @@ sub init($)
 
     my $group = $args->{group};
     if(defined $group)
-    {   if($group =~ m/\D/)
+    {   if($group =~ m/[^0-9]/)
         {   my $gid = $self->{AD_gid} = getgrnam $group;
             defined $gid
                 or error __x"group {name} does not exist", name => $group;
@@ -126,8 +128,8 @@ are started later on. If the task is not specified, only a warning is
 produced. This may be useful when you start implementing the daemon:
 you do not need to care about the task to perform yet.
 
-=option   kill_childs CODE
-=default  kill_childs send sigterm
+=option  kill_childs CODE
+=default kill_childs send sigterm
 The CODE terminates all running children, maybe to start new ones,
 maybe to terminate the whole daemon.
 
@@ -177,7 +179,13 @@ sub run(@)
     my $gid = $self->{AD_gid} || $EGID;
     my $uid = $self->{AD_uid} || $EUID;
     if($gid!=$EGID && $uid!=$EUID)
-    {   eval { set_user $uid, undef, $gid };
+    {   eval { if($] > 5.015007) { setuid $uid, $gid }
+               else
+               {   # in old versions of Perl, the uid and gid gets cached
+                   $EGID = $gid;
+                   $EUID = $uid;
+               }
+             };
         $@ and error __x"cannot switch to user/group to {uid}/{gid}: {err}"
           , uid => $uid, gid => $gid, err => $@;
     }
