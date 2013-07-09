@@ -7,6 +7,8 @@
 #   kill $(cat /tmp/net.pid)
 # Don't forget to check /var/log/messages!
 
+# Also, have a look at the example script of Any::Daemon::HTTP
+
 use warnings;
 use strict;
 

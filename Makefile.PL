@@ -3,7 +3,7 @@ use ExtUtils::MakeMaker;
 
 use 5.008;
 
-my $version = '0.14';
+my $version = '0.90';
 
 WriteMakefile
  ( NAME	 	=> 'Any::Daemon'

@@ -5,7 +5,7 @@ package Any::Daemon;
 
 use Log::Report  'any-daemon';
 
-use POSIX         qw(setsid setuid :sys_wait_h);
+use POSIX         qw(setsid setuid setgid :sys_wait_h);
 use English       qw/$EUID $EGID $PID/;
 use File::Spec    ();
 
@@ -43,13 +43,13 @@ reports to any logging mechanism you like.
 
 The code for this module is in use for many different daemons, some
 with heavy load (a few dozen requests per second)  Have a look in
-the examples directory!
+the examples directory!  Also, you may like M<Any::Daemon::HTTP>
 
 =chapter METHODS
 
 =section Constructors
 
-=ci_method new OPTIONS
+=c_method new OPTIONS
 With C<new()> you provide the operating system integration OPTIONS,
 where C<run()> gets the activity related parameters: the real action.
 
@@ -111,6 +111,18 @@ sub init($)
     $self;
 }
 
+#--------------------
+=section Accessors
+
+=method workdir
+[0.90] assigned working directory of the daemon in the file-system.
+=cut
+
+sub workdir() {shift->{AD_wd}}
+
+#--------------------
+=section Action
+
 =method run OPTIONS
 The C<run> method gets the activity related parameters.
 
@@ -152,6 +164,14 @@ The maximum (is usual) number of childs to run.
 sub run(@)
 {   my ($self, %args) = @_;
 
+    if(my $wd = $self->workdir)
+    {   -d $wd or mkdir $wd, 0700
+            or fault __x"cannot create working directory {dir}", dir => $wd;
+
+        chdir $wd
+            or fault __x"cannot change to working directory {dir}", dir => $wd;
+    }
+
     my $bg = exists $args{background} ? $args{background} : 1;
     if($bg)
     {   my $kid = fork;
@@ -179,7 +199,7 @@ sub run(@)
     my $gid = $self->{AD_gid} || $EGID;
     my $uid = $self->{AD_uid} || $EUID;
     if($gid!=$EGID && $uid!=$EUID)
-    {   eval { if($] > 5.015007) { setuid $uid, $gid }
+    {   eval { if($] > 5.015007) { setgid $gid; setuid $uid }
                else
                {   # in old versions of Perl, the uid and gid gets cached
                    $EGID = $gid;
@@ -191,14 +211,6 @@ sub run(@)
     }
     elsif($EUID==0)
     {   warning __"running daemon as root is dangerous: please specify user";
-    }
-
-    if(my $wd = $self->{AD_wd})
-    {   -d $wd or mkdir $wd, 0700
-            or fault __x"cannot create working directory {dir}", dir => $wd;
-
-        chdir $wd
-            or fault __x"cannot change to working directory {dir}", dir => $wd;
     }
 
     my $sid         = setsid;
@@ -232,7 +244,7 @@ sub run(@)
         $SIG{TERM} = $SIG{CHLD} = 'IGNORE';
         $max_childs = 0;
         $kill_childs->(keys %childs);
-        sleep 2;
+        sleep 2;  # give childs some time to stop
         kill TERM => -$sid;
         unlink $pidfn;
         my $intrnr = $signal eq 'INT' ? 2 : 9;

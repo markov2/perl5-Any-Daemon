@@ -1,6 +1,11 @@
 
 version history of Any::Daemon
 
+version 0.90: Tue Jul  9 17:39:01 CEST 2013
+	- create workdir first at run(), so its dir can be used by the
+	  other parameters.
+	- new method workdir()
+
 version 0.14: Fri May  3 10:21:16 CEST 2013
 	- drop Unix::SavedIDs because it got broken in 5.16
 
