@@ -1,6 +1,10 @@
 
 version history of Any::Daemon
 
+version 0.91: Fri Oct  4 09:04:02 CEST 2013
+	Fixes:
+	- one dispatcher is enough!
+
 version 0.90: Tue Jul  9 17:39:01 CEST 2013
 	- create workdir first at run(), so its dir can be used by the
 	  other parameters.

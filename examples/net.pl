@@ -68,6 +68,9 @@ unless(defined $net_opts{port})
 dispatcher SYSLOG => 'syslog', accept => 'INFO-'
   , identity => 'any-daemon-test', facility => 'local0';
 
+# Do not send info to the terminal anymore
+dispatcher close => 'default';
+
 dispatcher mode => $mode, 'ALL' if $mode;
 
 my $socket = IO::Socket::INET->new

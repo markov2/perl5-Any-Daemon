@@ -183,8 +183,8 @@ sub run(@)
         {   fault __x"cannot start the managing daemon";
         }
 
-        dispatcher('list') >= 2
-            or error __x"you need to start a dispatcher to send log to";
+        dispatcher('list') >= 1
+            or error __x"you need to have a dispatcher to send log to";
     }
 
     my $pidfn = $self->{AD_pidfn};
