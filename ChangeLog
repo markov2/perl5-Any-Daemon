@@ -1,6 +1,10 @@
 
 version history of Any::Daemon
 
+version 0.92: Tue Oct 15 12:22:13 CEST 2013
+	Fixes:
+	- do not complain at close when there is no $pidfn
+
 version 0.91: Fri Oct  4 09:04:02 CEST 2013
 	Fixes:
 	- one dispatcher is enough!

@@ -246,7 +246,7 @@ sub run(@)
         $kill_childs->(keys %childs);
         sleep 2;  # give childs some time to stop
         kill TERM => -$sid;
-        unlink $pidfn;
+        unlink $pidfn if $pidfn;
         my $intrnr = $signal eq 'INT' ? 2 : 9;
         exit $intrnr+128;
       };
