@@ -1,6 +1,15 @@
 
 version history of Any::Daemon
 
+version 0.93: Sun Jan  5 17:31:48 CET 2014
+	Changes:
+	- move to Log::Report 1.0, only light form required.
+
+	Fixes:
+	- catch daemon errors with try not eval, to keep Log::Report::Message
+	  exceptions alive for dispatchers in the main script.
+	- ownership of workdir to runtime user.
+
 version 0.92: Tue Oct 15 12:22:13 CEST 2013
 	Fixes:
 	- do not complain at close when there is no $pidfn

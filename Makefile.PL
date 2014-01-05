@@ -3,14 +3,16 @@ use ExtUtils::MakeMaker;
 
 use 5.008;
 
-my $version = '0.92';
+my $version = '0.93';
 
 WriteMakefile
  ( NAME	 	=> 'Any::Daemon'
  , VERSION	=> $version
  , PREREQ_PM    =>
-    { Test::More     => 0.80
-    , Log::Report    => 0.90
+    { Test::More            => 0.80
+
+    # only the example requires the full Log::Report
+    , Log::Report::Optional => '1.00'
     }
  , EXE_FILES    => []
  , AUTHOR       => 'Mark Overmeer'

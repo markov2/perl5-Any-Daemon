@@ -12,7 +12,7 @@
 use warnings;
 use strict;
 
-use Log::Report;
+use Log::Report 'any-daemon-example';
 use Any::Daemon;
 
 use Getopt::Long     qw/GetOptions :config no_ignore_case bundling/;
@@ -56,7 +56,7 @@ $run_opts{background} //= 1;
 unless(defined $net_opts{port})
 {   my $port = $net_opts{port} = $1
         if $net_opts{host} =~ s/\:([0-9]+)$//;
-    defined $port or error "no port specified";
+    defined $port or error __"no port specified";
 }
 
 #
@@ -69,7 +69,7 @@ dispatcher SYSLOG => 'syslog', accept => 'INFO-'
   , identity => 'any-daemon-test', facility => 'local0';
 
 # Do not send info to the terminal anymore
-dispatcher close => 'default';
+# dispatcher close => 'default';
 
 dispatcher mode => $mode, 'ALL' if $mode;
 
@@ -78,7 +78,8 @@ my $socket = IO::Socket::INET->new
   , LocalPort => $net_opts{port}
   , Listen    => 5
   , Reuse     => 1
-  ) or fault "cannot create socket at $net_opts{host}:$net_opts{port}";
+  ) or fault __x"cannot create socket at {host}:{port}"
+        , host => $net_opts{host}, port => $net_opts{port};
 
 my $daemon = Any::Daemon->new(%os_opts);
 
@@ -92,10 +93,10 @@ exit 1;   # will never be called
 sub run_task()
 {
     while(my $client = $socket->accept)
-    {   info "new client $client";
+    {   info __x"new client {host}", host => $client->peerhost;
         my $line = <$client>;
         chomp $line;
-        info "received $line";
+        info __x"received {line}", line => $line;
         $client->print(scalar(reverse $line), "\n");
         $client->close;
     }
