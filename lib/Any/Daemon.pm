@@ -49,8 +49,8 @@ the examples directory!  Also, you may like M<Any::Daemon::HTTP>
 
 =section Constructors
 
-=c_method new OPTIONS
-With C<new()> you provide the operating system integration OPTIONS,
+=c_method new %options
+With C<new()> you provide the operating system integration %options,
 where C<run()> gets the activity related parameters: the real action.
 
 Be warned that the user, group, and workdir will not immediately be
@@ -123,7 +123,7 @@ sub workdir() {shift->{AD_wd}}
 #--------------------
 =section Action
 
-=method run OPTIONS
+=method run %options
 The C<run> method gets the activity related parameters.
 
 =option  background BOOLEAN
@@ -229,7 +229,10 @@ sub run(@)
     my $child_task  = $args{child_task}  || \&_child_task; 
 
     my $run_child   = sub
-      { # unhandled errors are to be treated seriously.
+      { # re-seed the random number sequence per process
+        srand;
+
+        # unhandled errors are to be treated seriously.
         my $rc = try { $child_task->(@_) };
         if(my $e = $@->wasFatal) { $e->throw(reason => 'ALERT'); $rc = 1 }
         $rc;
@@ -333,9 +336,9 @@ sub _child_died($$)
 
             # I'll not handle my parent's kids!
             $SIG{CHLD} = 'IGNORE';
-            %childs = ();
+            %childs    = ();
 
-            my $rc = $run_child->();
+            my $rc     = $run_child->();
             exit $rc;
         }
 
