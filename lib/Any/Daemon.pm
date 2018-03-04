@@ -1,7 +1,11 @@
-use warnings;
-use strict;
+# This code is part of distribution Any-Daemon. Meta-POD processed with
+# OODoc into POD and HTML manual-pages.  See README.md
+# Copyright Mark Overmeer.  Licensed under the same terms as Perl itself.
 
 package Any::Daemon;
+
+use warnings;
+use strict;
 
 use Log::Report::Optional  'any-daemon';
 
@@ -85,7 +89,6 @@ sub new(@) {my $class = shift; (bless {}, $class)->init({@_})}
 
 sub init($)
 {   my ($self, $args) = @_;
-
     $self->{AD_pidfn} = $args->{pid_file};
 
     my $user = $args->{user};
@@ -96,6 +99,9 @@ sub init($)
                 or error __x"user {name} does not exist", name => $user;
         }
         else { $self->{AD_uid} = $user }
+    }
+    elsif($EUID==0)
+    {   warning __"running daemon as root is dangerous: please specify user";
     }
 
     my $group = $args->{group};
@@ -178,7 +184,9 @@ sub run(@)
 
     my $bg = exists $args{background} ? $args{background} : 1;
     if($bg)
-    {   my $kid = fork;
+    {   trace "backgrounding managing daemon";
+
+        my $kid = fork;
         if($kid)
         {   # starting parent is ready to leave
             exit 0;
@@ -216,9 +224,6 @@ sub run(@)
         $@ and error __x"cannot switch to user/group to {uid}/{gid}: {err}"
           , uid => $uid, gid => $gid, err => $@;
     }
-    elsif($EUID==0)
-    {   warning __"running daemon as root is dangerous: please specify user";
-    }
 
     my $sid         = setsid;
 
@@ -230,7 +235,7 @@ sub run(@)
 
     my $run_child   = sub
       { # re-seed the random number sequence per process
-        srand;
+        srand(time+$$);
 
         # unhandled errors are to be treated seriously.
         my $rc = try { $child_task->(@_) };
@@ -269,7 +274,7 @@ sub run(@)
         open STDERR, '>', File::Spec->devnull;
     }
 
-    info __x"daemon started; proc={proc} uid={uid} gid={gid} childs={max}"
+    notice __x"daemon started; proc={proc} uid={uid} gid={gid} childs={max}"
       , proc => $PID, uid => $EUID, gid => $EGID, max => $max_childs;
 
     $child_died->($max_childs, $run_child);
@@ -278,7 +283,7 @@ sub run(@)
     sleep 60 while 1;
 }
 
-sub _reconfing_daemon(@)
+sub _reconfig_daemon(@)
 {   my @childs = @_;
     notice "HUP: reconfigure deamon not implemented";
 }
@@ -306,7 +311,8 @@ sub _child_died($$)
         last ZOMBIE if $kid <= 0;
 
         if($? != 0)
-        {   notice "$kid process died with errno $?";
+        {   my $err = WIFEXITED($?) ? "errno ".WEXITSTATUS($?) : "sig $?";
+            notice "$kid process terminated with $err";
             # when children start to die, do not respawn too fast,
             # because usually this means serious troubles with the
             # server (like database) or implementation.
