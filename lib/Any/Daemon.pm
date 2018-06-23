@@ -122,15 +122,25 @@ sub init($)
 
 =method workdir
 [0.90] assigned working directory of the daemon in the file-system.
+
+=method pidFilename
 =cut
 
 sub workdir() {shift->{AD_wd}}
+sub pidFilename() { shift->{AD_pidfn} }
 
 #--------------------
 =section Action
 
 =method run %options
 The C<run> method gets the activity related parameters.
+
+You specify either C<run_task>, for the function to be called by this
+deamon itself, or C<child_task> when you wish to manage child tasks
+which run the action.
+
+[0.96] When you pass a method name, it will be called on this object.
+This is very clean when you have extended this daemon class.
 
 =option  background BOOLEAN
 =default background <true>
@@ -139,8 +149,13 @@ prefered to run the daemon in the foreground, to be able to stop
 the daemon with Crtl-C and to see errors directly on the screen
 in stead of only in some syslog file.
 
-=option  child_task CODE
-=default child_task warn only
+=option  run_task CODE|$method
+=default run_task C<undef>
+[0.96] The CODE which will be run by this process.  This implies: no
+managed children.
+
+=option  child_task CODE|$method
+=default child_task C<undef>
 The CODE will be run for each child which is started, also when they
 are started later on. If the task is not specified, only a warning is
 produced. This may be useful when you start implementing the daemon:
@@ -149,19 +164,19 @@ you do not need to care about the task to perform yet.
 The returned value of thise CODE is used as exit code of the child
 process, where zero means 'ok'.
 
-=option  kill_childs CODE
-=default kill_childs send sigterm
+=option  kill_childs CODE|$method
+=default kill_childs 'killChilds'
 The CODE terminates all running children, maybe to start new ones,
 maybe to terminate the whole daemon.
 
-=option  child_died CODE
-=default child_died spawn new childs
+=option  child_died CODE|$method
+=default child_died 'childDied'
 The C<child_died> routine handles dieing kids and the restart of new
 ones.  It gets two parameters: the maximum number of childs plus the
 task to perform per kid.
 
-=option  reconfigure CODE
-=default reconfigure ignore
+=option  reconfigure CODE|$method
+=default reconfigure 'reconfigDaemon'
 The CODE is run when a SIGHUP is received; signal 1 is used by most
 daemons as trigger for reconfiguration.
 
@@ -169,6 +184,12 @@ daemons as trigger for reconfiguration.
 =default max_childs 10
 The maximum (is usual) number of childs to run.
 =cut
+
+sub _mkcall($)
+{   return $_[1] if ref $_[1] eq 'CODE';
+    my ($self, $what) = @_;
+    sub { $self->$what(@_) };
+}
 
 sub run(@)
 {   my ($self, %args) = @_;
@@ -199,7 +220,7 @@ sub run(@)
             or error __x"you need to have a dispatcher to send log to";
     }
 
-    my $pidfn = $self->{AD_pidfn};
+    my $pidfn = $self->pidFilename;
     if(defined $pidfn)
     {   local *PIDF;
         if(open PIDF, '>', $pidfn)
@@ -225,13 +246,38 @@ sub run(@)
           , uid => $uid, gid => $gid, err => $@;
     }
 
-    my $sid         = setsid;
+    setsid;
 
-    my $reconfig    = $args{reconfig}    || \&_reconfig_daemon;
-    my $kill_childs = $args{kill_childs} || \&_kill_childs;
-    my $child_died  = $args{child_died}  || \&_child_died;
+    my $child_task  = $self->_mkcall($args{child_task});
+	my $own_task    = $self->_mkcall($args{run_task});
+
+	$child_task || $own_task
+		or panic __x"you have to run with either child_task or run_task";
+
+	$child_task && $own_task
+		or panic __x"run with only one of child_task and run_task";
+
+    if($bg)
+    {   # no standard die and warn output anymore (Log::Report)
+        dispatcher close => 'default';
+
+        # to devnull to avoid write errors in third party modules
+        open STDIN,  '<', File::Spec->devnull;
+        open STDOUT, '>', File::Spec->devnull;
+        open STDERR, '>', File::Spec->devnull;
+    }
+
+    if($child_task)
+         { $self->_run_with_childs($child_task, %args) }
+    else { $self->_run_without_childs($own_task, %args) }
+}
+
+sub _run_with_childs($%) {
+	my ($self, $child_task, %args) = @_;
+    my $reconfig    = $self->_mkcall($args{reconfig}    || 'reconfigDaemon');
+    my $kill_childs = $self->_mkcall($args{kill_childs} || 'killChilds');
+    my $child_died  = $self->_mkcall($args{child_died}  || 'childDied');
     my $max_childs  = $args{max_childs}  || 10;
-    my $child_task  = $args{child_task}  || \&_child_task; 
 
     my $run_child   = sub
       { # re-seed the random number sequence per process
@@ -257,22 +303,15 @@ sub run(@)
         $SIG{TERM} = $SIG{CHLD} = 'IGNORE';
         $max_childs = 0;
         $kill_childs->(keys %childs);
-        sleep 2;  # give childs some time to stop
-        kill TERM => -$sid;
+        sleep 2;         # give childs some time to stop
+        kill TERM => 0;  # terminate the whole process group
+
+        my $pidfn = $self->pidFilename;
         unlink $pidfn if $pidfn;
+
         my $intrnr = $signal eq 'INT' ? 2 : 9;
         exit $intrnr+128;
       };
-
-    if($bg)
-    {   # no standard die and warn output anymore (Log::Report)
-        dispatcher close => 'default';
-
-        # to devnull to avoid write errors in third party modules
-        open STDIN,  '<', File::Spec->devnull;
-        open STDOUT, '>', File::Spec->devnull;
-        open STDERR, '>', File::Spec->devnull;
-    }
 
     notice __x"daemon started; proc={proc} uid={uid} gid={gid} childs={max}"
       , proc => $PID, uid => $EUID, gid => $EGID, max => $max_childs;
@@ -283,25 +322,51 @@ sub run(@)
     sleep 60 while 1;
 }
 
-sub _reconfig_daemon(@)
-{   my @childs = @_;
+sub _run_without_childs($%) {
+	my ($self, $run_task, %args) = @_;
+    my $reconfig    = $self->_mkcall($args{reconfig}    || 'reconfigDaemon');
+
+    # unhandled errors are to be treated seriously.
+    my $rc = try { $run_task->(@_) };
+    if(my $e = $@->wasFatal) { $e->throw(reason => 'ALERT'); $rc = 1 }
+
+    $SIG{HUP}  = sub
+      { notice "daemon received signal HUP";
+        $reconfig->(keys %childs);
+      };
+
+    $SIG{TERM} = $SIG{INT} = sub
+      { my $signal = shift;
+        notice "daemon terminated by signal $signal";
+
+        my $pidfn = $self->pidFilename;
+        unlink $pidfn if $pidfn;
+
+        my $intrnr = $signal eq 'INT' ? 2 : 9;
+        exit $intrnr+128;
+      };
+
+    notice __x"daemon started; proc={proc} uid={uid} gid={gid}"
+      , proc => $PID, uid => $EUID, gid => $EGID;
+
+    $run_task->();
+}
+
+sub reconfigDaemon(@)
+{   my ($self, @childs) = @_;
     notice "HUP: reconfigure deamon not implemented";
 }
 
-sub _child_task()
-{   notice "No child_task implemented yet. I'll sleep for some time";
-    sleep SLEEP_FOR_SOME_TIME;
-}
-
-sub _kill_childs(@)
-{   my @childs = @_;
+sub killChilds(@)
+{   my ($self, @childs) = @_;
+	@childs or return;
     notice "killing ".@childs." children";
     kill TERM => @childs;
 }
 
 # standard implementation for starting new childs.
-sub _child_died($$)
-{   my ($max_childs, $run_child) = @_;
+sub childDied($$)
+{   my ($self, $max_childs, $run_child) = @_;
 
     # Clean-up zombies
 

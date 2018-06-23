@@ -3,6 +3,11 @@
 
 version 0.96:
 
+	Improvements:
+	- add accessor pidFilename
+	- besides CODEs refs, most parameters now also support a method name
+	- support daemon which does its task directly (run_task)
+
 version 0.95: Sun  4 Mar 12:00:31 CET 2018
 
 	Fixes:
