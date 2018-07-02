@@ -149,12 +149,12 @@ prefered to run the daemon in the foreground, to be able to stop
 the daemon with Crtl-C and to see errors directly on the screen
 in stead of only in some syslog file.
 
-=option  run_task CODE|$method
+=option  run_task CODE|METHOD
 =default run_task C<undef>
 [0.96] The CODE which will be run by this process.  This implies: no
 managed children.
 
-=option  child_task CODE|$method
+=option  child_task CODE|METHOD
 =default child_task C<undef>
 The CODE will be run for each child which is started, also when they
 are started later on. If the task is not specified, only a warning is
@@ -164,18 +164,18 @@ you do not need to care about the task to perform yet.
 The returned value of thise CODE is used as exit code of the child
 process, where zero means 'ok'.
 
-=option  kill_childs CODE|$method
+=option  kill_childs CODE|METHOD
 =default kill_childs 'killChilds'
 The CODE terminates all running children, maybe to start new ones,
 maybe to terminate the whole daemon.
 
-=option  child_died CODE|$method
+=option  child_died CODE|METHOD
 =default child_died 'childDied'
 The C<child_died> routine handles dieing kids and the restart of new
 ones.  It gets two parameters: the maximum number of childs plus the
 task to perform per kid.
 
-=option  reconfigure CODE|$method
+=option  reconfigure CODE|METHOD
 =default reconfigure 'reconfigDaemon'
 The CODE is run when a SIGHUP is received; signal 1 is used by most
 daemons as trigger for reconfiguration.
