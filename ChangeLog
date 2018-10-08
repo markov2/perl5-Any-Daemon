@@ -1,7 +1,9 @@
 
 == history of distribution Any-Daemon
 
-version 0.96:
+version 0.97:
+
+version 0.96: Mon  8 Oct 10:52:41 CEST 2018
 
 	Fixes:
 	- user/group change only happened when both user and group needed

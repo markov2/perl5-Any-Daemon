@@ -3,7 +3,7 @@ use ExtUtils::MakeMaker;
 
 use 5.010;
 
-my $version = '0.96';
+my $version = '0.97';
 
 WriteMakefile
  ( NAME	 	=> 'Any::Daemon'
@@ -45,5 +45,5 @@ DISTDIR         = ../public_html/any-daemon/source
 FIRST_YEAR      = 2011
 EMAIL           = markov@cpan.org
 WEBSITE         = http://perl.overmeer.net/CPAN/
-EXTENDS			= ../../perl/AnyHTTP
+EXTENDS         = ../Any-Daemon-HTTP
 __POSTAMBLE
