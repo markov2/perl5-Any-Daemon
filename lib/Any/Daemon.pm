@@ -231,31 +231,41 @@ sub run(@)
 
     my $gid = $self->{AD_gid} || $EGID;
     my $uid = $self->{AD_uid} || $EUID;
-    if($gid!=$EGID || $uid!=$EUID)
-    {   chown $uid,$gid, $wd if $wd;
 
-        eval { if($] > 5.015007) { setgid $gid; setuid $uid }
-               else
-               {   # in old versions of Perl, the uid and gid gets cached
-                   $EGID = $gid;
-                   $EUID = $uid;
-               }
-             };
+    chown $uid,$gid, $wd if $wd;   # don't check success: user may have plan
 
-        $@ and error __x"cannot switch to user/group to {uid}/{gid}: {err}"
-          , uid => $uid, gid => $gid, err => $@;
+    if($gid != $EGID)
+    {   if($] > 5.015007)
+        {   setgid $gid or fault __x"cannot change to group {gid}", gid => $gid;
+        }
+        else   # in old versions of Perl, the uid and gid gets cached
+        {   eval { $EGID = $gid };
+            $@ and error __x"cannot switch to group {gid}: {err}"
+               , gid => $gid, err => $@;
+        }
+    }
+
+    if($uid != $EUID)
+    {   if($] > 5.015007)
+        {   setuid $uid or fault __x"cannot change to user {uid}", uid => $uid;
+        }
+        else
+        {   eval { $EUID = $uid };
+            $@ and error __x"cannot switch to user {uid}: {err}"
+               , uid => $uid, err => $@;
+        }
     }
 
     setsid;
 
     my $child_task  = $self->_mkcall($args{child_task});
-	my $own_task    = $self->_mkcall($args{run_task});
+    my $own_task    = $self->_mkcall($args{run_task});
 
-	$child_task || $own_task
-		or panic __x"you have to run with either child_task or run_task";
+    $child_task || $own_task
+        or panic __x"you have to run with either child_task or run_task";
 
-	$child_task && $own_task
-		or panic __x"run with only one of child_task and run_task";
+    $child_task && $own_task
+        or panic __x"run with only one of child_task and run_task";
 
     if($bg)
     {   # no standard die and warn output anymore (Log::Report)
@@ -273,7 +283,7 @@ sub run(@)
 }
 
 sub _run_with_childs($%) {
-	my ($self, $child_task, %args) = @_;
+    my ($self, $child_task, %args) = @_;
     my $reconfig    = $self->_mkcall($args{reconfig}    || 'reconfigDaemon');
     my $kill_childs = $self->_mkcall($args{kill_childs} || 'killChilds');
     my $child_died  = $self->_mkcall($args{child_died}  || 'childDied');
@@ -323,7 +333,7 @@ sub _run_with_childs($%) {
 }
 
 sub _run_without_childs($%) {
-	my ($self, $run_task, %args) = @_;
+    my ($self, $run_task, %args) = @_;
     my $reconfig    = $self->_mkcall($args{reconfig}    || 'reconfigDaemon');
 
     # unhandled errors are to be treated seriously.
@@ -359,7 +369,8 @@ sub reconfigDaemon(@)
 
 sub killChilds(@)
 {   my ($self, @childs) = @_;
-	@childs or return;
+    @childs or return;
+
     notice "killing ".@childs." children";
     kill TERM => @childs;
 }
