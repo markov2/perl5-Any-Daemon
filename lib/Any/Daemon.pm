@@ -231,7 +231,7 @@ sub run(@)
 
     my $gid = $self->{AD_gid} || $EGID;
     my $uid = $self->{AD_uid} || $EUID;
-    if($gid!=$EGID && $uid!=$EUID)
+    if($gid!=$EGID || $uid!=$EUID)
     {   chown $uid,$gid, $wd if $wd;
 
         eval { if($] > 5.015007) { setgid $gid; setuid $uid }
