@@ -19,6 +19,7 @@ WriteMakefile
  , EXE_FILES    => []
  , AUTHOR       => 'Mark Overmeer'
  , ABSTRACT     => 'General purpose daemon'
+ , LICENSE      => 'perl_5'
 
  , META_MERGE =>
       { 'meta-spec' => { version => 2 }
